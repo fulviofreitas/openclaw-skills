@@ -109,12 +109,31 @@ Each result is written as one JSON object per line (NDJSON) to stdout. Errors ar
 | `cabin` | string | Cabin class of the first segment |
 | `price` | float | Total price for all passengers |
 | `currency` | string | Currency of the quoted price |
+| `trip_type` | string | `"one-way"` or `"round-trip"` |
+| `return_leg` | object\|null | Return flight details for round-trip searches (see below), `null` for one-way |
 | `booking_url` | null | Not supported — booking must be completed via an agent |
 | `raw` | object | Full raw offer object from the Amadeus API response |
+
+### Return Leg Object (round-trip only)
+
+When `--return-date` is provided, each result includes a `return_leg` object with the return flight details:
+
+| Field | Type | Description |
+|---|---|---|
+| `airline` | string | Return flight carrier name |
+| `airline_code` | string | IATA code of the return carrier |
+| `flight_number` | string | Return flight number |
+| `origin` | string | Return departure airport (same as outbound destination) |
+| `destination` | string | Return arrival airport (same as outbound origin) |
+| `departure_at` | string | ISO 8601 return departure datetime |
+| `arrival_at` | string | ISO 8601 return arrival datetime |
+| `duration_minutes` | integer | Return leg duration in minutes |
+| `stops` | integer | Number of stops on the return leg |
+| `layover_airports` | array | Intermediate airport codes on the return leg |
 
 ## Behaviour Notes
 
 - OAuth2 access tokens are fetched fresh on every invocation and are never written to disk.
-- Multi-leg itineraries emit one result per outbound itinerary.
+- Round-trip searches include full return leg details extracted from the Amadeus API response.
 - This skill performs read-only searches. No booking or PII handling occurs.
 - Production access requires additional approval from Amadeus. See https://developers.amadeus.com/get-started/get-started-with-amadeus-apis-334

@@ -256,16 +256,20 @@ def normalise_offer(
     offer: dict[str, Any],
     dictionaries: dict[str, Any],
     currency: str,
+    return_date: str | None = None,
 ) -> dict[str, Any]:
     """Convert a single Amadeus flight offer into the FlightResult schema.
 
-    Only the first outbound itinerary is represented per result object.
-    Round-trip offers produce a single result for the outbound leg.
+    For round-trip searches, ``itineraries[1]`` is extracted and surfaced under
+    the ``return_leg`` key.  One-way offers set ``return_leg`` to ``None``.
 
     Args:
         offer: A single flight offer object from the Amadeus response.
         dictionaries: The ``dictionaries`` block from the Amadeus response.
         currency: Currency code used for the search (fallback if not in offer).
+        return_date: The return date string (YYYY-MM-DD) supplied by the caller,
+            or ``None`` for one-way searches.  Used to decide whether to extract
+            the return itinerary and to set ``trip_type``.
 
     Returns:
         A FlightResult-conformant dictionary.
@@ -316,6 +320,50 @@ def normalise_offer(
 
     result_currency: str = price_info.get("currency") or currency.upper()
 
+    # Return leg extraction for round-trip offers
+    return_leg: dict[str, Any] | None = None
+    if len(offer["itineraries"]) > 1 and return_date is not None:
+        ret_itinerary: dict[str, Any] = offer["itineraries"][1]
+        ret_segments: list[dict[str, Any]] = ret_itinerary["segments"]
+
+        ret_first_seg = ret_segments[0]
+        ret_last_seg = ret_segments[-1]
+
+        ret_airline_code: str = ret_first_seg["carrierCode"]
+        ret_airline_name: str = resolve_carrier_name(ret_airline_code, dictionaries)
+        ret_flight_number: str = f"{ret_first_seg['carrierCode']}{ret_first_seg['number']}"
+
+        ret_origin: str = ret_first_seg["departure"]["iataCode"]
+        ret_destination: str = ret_last_seg["arrival"]["iataCode"]
+        ret_departure_at: str = ret_first_seg["departure"]["at"]
+        ret_arrival_at: str = ret_last_seg["arrival"]["at"]
+
+        ret_stops: int = len(ret_segments) - 1
+        ret_layover_airports: list[str] = [
+            seg["departure"]["iataCode"] for seg in ret_segments[1:]
+        ]
+
+        ret_duration_str: str = ret_itinerary.get("duration", "PT0M")
+        try:
+            ret_duration_minutes: int = parse_iso_duration(ret_duration_str)
+        except ValueError:
+            ret_duration_minutes = 0
+
+        return_leg = {
+            "airline": ret_airline_name,
+            "airline_code": ret_airline_code,
+            "flight_number": ret_flight_number,
+            "origin": ret_origin,
+            "destination": ret_destination,
+            "departure_at": ret_departure_at,
+            "arrival_at": ret_arrival_at,
+            "duration_minutes": ret_duration_minutes,
+            "stops": ret_stops,
+            "layover_airports": ret_layover_airports,
+        }
+
+    trip_type: str = "round-trip" if return_date else "one-way"
+
     return {
         "provider": "amadeus",
         "airline": airline_name,
@@ -331,6 +379,8 @@ def normalise_offer(
         "cabin": cabin,
         "price": price,
         "currency": result_currency,
+        "trip_type": trip_type,
+        "return_leg": return_leg,
         "booking_url": None,
         "raw": offer,
     }
@@ -526,7 +576,7 @@ async def main() -> None:
     dictionaries: dict[str, Any] = response_body.get("dictionaries", {})
 
     for offer in offers:
-        result = normalise_offer(offer, dictionaries, args.currency)
+        result = normalise_offer(offer, dictionaries, args.currency, return_date=args.return_date)
         print(json.dumps(result, ensure_ascii=False))
 
 

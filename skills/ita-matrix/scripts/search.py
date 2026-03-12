@@ -111,6 +111,8 @@ class FlightResult(TypedDict):
     price: float
     currency: str
     booking_url: None
+    trip_type: str
+    return_leg: dict[str, Any] | None
     raw: dict[str, Any]
 
 
@@ -807,6 +809,8 @@ async def _extract_row(row: Any, params: SearchParams) -> FlightResult | None:
         price=price,
         currency=params["currency"],
         booking_url=None,
+        trip_type="round-trip" if params["return_date"] else "one-way",
+        return_leg=None,
         raw=raw,
     )
 

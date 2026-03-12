@@ -76,6 +76,8 @@ def _build_flight_result(
     departure_date: date,
     cabin: CabinArg,
     currency: str,
+    is_round_trip: bool = False,
+    return_date: date | None = None,
 ) -> dict[str, Any]:
     """Convert a raw ``Flight`` object into the canonical FlightResult dict.
 
@@ -86,6 +88,11 @@ def _build_flight_result(
         departure_date: Calendar date of the outbound leg.
         cabin: Cabin class constant string.
         currency: ISO 4217 currency code.
+        is_round_trip: ``True`` when a return date was requested.  The price
+            returned by Google Flights reflects the full round-trip total in
+            that case.
+        return_date: Calendar date of the return leg, or ``None`` for one-way
+            searches.  Stored as an ISO 8601 string in the output.
 
     Returns:
         A FlightResult-shaped dictionary ready for JSON serialisation.
@@ -133,6 +140,10 @@ def _build_flight_result(
         "currency": currency.upper(),
         # Deep-link booking URLs require a paid API key; not available here.
         "booking_url": None,
+        "trip_type": "round-trip" if is_round_trip else "one-way",
+        # fast-flights does not surface individual return-leg details; the
+        # price already reflects the round-trip total when return_date is set.
+        "return_leg": None,
         "raw": raw,
     }
 
@@ -456,6 +467,8 @@ def main() -> None:
                 departure_date=departure_date,
                 cabin=args.cabin,  # type: ignore[arg-type]
                 currency=args.currency,
+                is_round_trip=is_round_trip,
+                return_date=return_date,
             )
         except Exception as exc:  # noqa: BLE001
             # A single malformed result should not abort the entire run.

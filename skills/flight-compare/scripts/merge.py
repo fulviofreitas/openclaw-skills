@@ -173,6 +173,12 @@ def _merge_pair(primary: dict[str, Any], duplicate: dict[str, Any]) -> dict[str,
     if dup_price and (not primary_price or dup_price < primary_price):
         primary["price"] = dup_price
 
+    # Preserve return_leg from whichever result has it
+    if not primary.get("return_leg") and duplicate.get("return_leg"):
+        primary["return_leg"] = duplicate["return_leg"]
+    if not primary.get("trip_type"):
+        primary["trip_type"] = duplicate.get("trip_type", "one-way")
+
     return primary
 
 
@@ -236,6 +242,7 @@ def format_table(
     cabin: str,
     adults: int,
     provider_counts: dict[str, int],
+    return_date: str | None = None,
 ) -> str:
     """Render a human-readable summary table.
 
@@ -249,6 +256,7 @@ def format_table(
         provider_counts: Mapping of provider display-name → raw result count
                          before deduplication, e.g.
                          ``{"Google": 7, "ITA Matrix": 5}``.
+        return_date: Return date for round-trip searches, or ``None``.
 
     Returns:
         Multi-line string ready for printing to stdout.
@@ -258,8 +266,11 @@ def format_table(
     # Header
     cabin_display = cabin.replace("_", " ").title()
     adult_label = f"{adults} adult" + ("s" if adults != 1 else "")
+    route_str = f"{origin.upper()} \u2192 {dest.upper()}"
+    if return_date:
+        route_str += f" \u21a9 {return_date}"
     lines.append(
-        f"Searching {origin.upper()} \u2192 {dest.upper()} on {date}"
+        f"Searching {route_str} on {date}"
         f" ({cabin_display}, {adult_label})..."
     )
 
@@ -344,6 +355,16 @@ def format_table(
         annotation = ""
         if price_val and float(price_val) == best_price:
             annotation = " \u2605 BEST PRICE"
+
+        # Return leg annotation for round-trip results
+        ret = r.get("return_leg")
+        if ret:
+            ret_fn = ret.get("flight_number") or "\u2014"
+            ret_dep_at = str(ret.get("departure_at") or "")
+            ret_arr_at = str(ret.get("arrival_at") or "")
+            ret_dep = ret_dep_at.split("T")[1][:5] if "T" in ret_dep_at else "\u2014"
+            ret_arr = ret_arr_at.split("T")[1][:5] if "T" in ret_arr_at else "\u2014"
+            annotation += f" | Return: {ret_fn} {ret_dep}\u2192{ret_arr}"
 
         line = col_fmt.format(
             rank=rank,

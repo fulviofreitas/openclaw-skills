@@ -69,6 +69,11 @@ Each result follows the shared `FlightResult` schema:
 }
 ```
 
+Each result also includes:
+
+- `trip_type`: `"round-trip"` or `"one-way"` depending on whether `--return-date` was provided.
+- `return_leg`: always `null` — ITA Matrix scraping does not provide structured return leg details, but the `price` reflects the full round-trip total.
+
 `booking_url` is always `null`. ITA Matrix is a search-only tool — it does not support ticket purchase. Use the result as a fare reference on the airline's own site or a GDS-connected OTA.
 
 ## Example Invocations

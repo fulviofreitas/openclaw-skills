@@ -369,8 +369,11 @@ async def _main() -> int:
     if not args.output_json:
         cabin_display = args.cabin.replace("_", " ").title()
         adult_label = f"{args.adults} adult" + ("s" if args.adults != 1 else "")
+        route_str = f"{args.origin.upper()} \u2192 {args.destination.upper()}"
+        if args.return_date:
+            route_str += f" \u21a9 {args.return_date}"
         print(
-            f"Searching {args.origin.upper()} \u2192 {args.destination.upper()}"
+            f"Searching {route_str}"
             f" on {args.date} ({cabin_display}, {adult_label})..."
         )
 
@@ -432,6 +435,7 @@ async def _main() -> int:
             cabin=args.cabin,
             adults=args.adults,
             provider_counts=provider_counts,
+            return_date=args.return_date,
         )
         print(table)
 

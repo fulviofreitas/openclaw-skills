@@ -49,6 +49,7 @@ python3 {baseDir}/scripts/compare.py <FROM> <TO> [options]
 
 ### Default: human-readable table
 
+One-way search:
 ```
 Searching SFO → JFK on 2026-04-15 (Economy, 1 adult)...
 Providers: ✓ Google Flights  ✓ ITA Matrix  ✓ Amadeus (test)
@@ -62,6 +63,20 @@ Providers: ✓ Google Flights  ✓ ITA Matrix  ✓ Amadeus (test)
 
 12 results from 3 providers | Google: 7  ITA: 5  Amadeus: 4 | 4 duplicates merged
 ```
+
+Round-trip search (with `--return-date`):
+```
+Searching SFO → JFK ↩ 2026-04-22 on 2026-04-15 (Economy, 1 adult)...
+Providers: ✓ Google Flights  ✓ Amadeus (test)
+
+ #  AIRLINE        FLIGHT    DEPART  ARRIVE  DURATION  STOPS  PRICE    SOURCE
+ 1  United         UA 101    07:00   15:22   5h22m     0      $378     Amadeus ★ BEST PRICE | Return: UA204 08:30→11:45
+ 2  Delta          DL 409    09:15   17:50   5h35m     0      $401     Google
+
+8 results from 2 providers | Google: 5  Amadeus: 3 | 0 duplicates merged
+```
+
+When Amadeus is available, round-trip results include return leg details (flight number, times) shown as annotations. Google Flights and ITA Matrix show round-trip total prices but cannot provide individual return flight details.
 
 ### --json: JSON array
 
