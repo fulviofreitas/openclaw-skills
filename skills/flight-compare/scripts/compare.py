@@ -152,8 +152,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--return-date",
         dest="return_date",
-        default=None,
-        help="Return date YYYY-MM-DD for round-trip searches",
+        required=True,
+        help="Return date in YYYY-MM-DD format (required — round-trip only)",
     )
     parser.add_argument(
         "--cabin",
@@ -369,9 +369,7 @@ async def _main() -> int:
     if not args.output_json:
         cabin_display = args.cabin.replace("_", " ").title()
         adult_label = f"{args.adults} adult" + ("s" if args.adults != 1 else "")
-        route_str = f"{args.origin.upper()} \u2192 {args.destination.upper()}"
-        if args.return_date:
-            route_str += f" \u21a9 {args.return_date}"
+        route_str = f"{args.origin.upper()} \u2192 {args.destination.upper()} \u21a9 {args.return_date}"
         print(
             f"Searching {route_str}"
             f" on {args.date} ({cabin_display}, {adult_label})..."

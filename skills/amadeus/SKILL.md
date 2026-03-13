@@ -68,9 +68,9 @@ python3 {baseDir}/scripts/search.py <FROM> <TO> [options]
 
 ## Example Invocations
 
-One-way economy search departing tomorrow:
+Basic round-trip search:
 ```bash
-python3 {baseDir}/scripts/search.py JFK LHR
+python3 {baseDir}/scripts/search.py JFK LHR -d 2026-05-01 --return-date 2026-05-10
 ```
 
 Specific date, business class, nonstop only:
@@ -109,8 +109,8 @@ Each result is written as one JSON object per line (NDJSON) to stdout. Errors ar
 | `cabin` | string | Cabin class of the first segment |
 | `price` | float | Total price for all passengers |
 | `currency` | string | Currency of the quoted price |
-| `trip_type` | string | `"one-way"` or `"round-trip"` |
-| `return_leg` | object\|null | Return flight details for round-trip searches (see below), `null` for one-way |
+| `trip_type` | string | `"round-trip"` |
+| `return_leg` | object\|null | Return itinerary details |
 | `booking_url` | null | Not supported — booking must be completed via an agent |
 | `raw` | object | Full raw offer object from the Amadeus API response |
 

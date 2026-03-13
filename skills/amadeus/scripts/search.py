@@ -5,7 +5,7 @@ Searches real-time flight prices and schedules via the Amadeus GDS API.
 Outputs results as newline-delimited JSON (NDJSON) to stdout.
 
 Usage:
-    search.py <FROM> <TO> [-d DATE] [--return-date DATE]
+    search.py <FROM> <TO> -d DATE --return-date DATE
               [--cabin CLASS] [--stops any|nonstop]
               [--adults N] [--currency CODE] [--max N]
 
@@ -153,7 +153,7 @@ async def search_flights(
     origin: str,
     destination: str,
     departure_date: str,
-    return_date: str | None,
+    return_date: str,
     cabin: str,
     nonstop_only: bool,
     adults: int,
@@ -169,7 +169,7 @@ async def search_flights(
         origin: IATA code of the origin airport.
         destination: IATA code of the destination airport.
         departure_date: Departure date in YYYY-MM-DD format.
-        return_date: Optional return date for round trips (YYYY-MM-DD).
+        return_date: Return date in YYYY-MM-DD format (required, round-trip only).
         cabin: Amadeus cabin class string (e.g. "ECONOMY").
         nonstop_only: If True, request only non-stop flights.
         adults: Number of adult passengers.
@@ -188,14 +188,12 @@ async def search_flights(
         "originLocationCode": origin.upper(),
         "destinationLocationCode": destination.upper(),
         "departureDate": departure_date,
+        "returnDate": return_date,
         "adults": adults,
         "travelClass": cabin,
         "currencyCode": currency.upper(),
         "max": max_results,
     }
-
-    if return_date:
-        params["returnDate"] = return_date
 
     if nonstop_only:
         params["nonStop"] = "true"
@@ -256,20 +254,15 @@ def normalise_offer(
     offer: dict[str, Any],
     dictionaries: dict[str, Any],
     currency: str,
-    return_date: str | None = None,
+    return_date: str,
 ) -> dict[str, Any]:
     """Convert a single Amadeus flight offer into the FlightResult schema.
-
-    For round-trip searches, ``itineraries[1]`` is extracted and surfaced under
-    the ``return_leg`` key.  One-way offers set ``return_leg`` to ``None``.
 
     Args:
         offer: A single flight offer object from the Amadeus response.
         dictionaries: The ``dictionaries`` block from the Amadeus response.
         currency: Currency code used for the search (fallback if not in offer).
-        return_date: The return date string (YYYY-MM-DD) supplied by the caller,
-            or ``None`` for one-way searches.  Used to decide whether to extract
-            the return itinerary and to set ``trip_type``.
+        return_date: The return date string (YYYY-MM-DD).
 
     Returns:
         A FlightResult-conformant dictionary.
@@ -320,9 +313,9 @@ def normalise_offer(
 
     result_currency: str = price_info.get("currency") or currency.upper()
 
-    # Return leg extraction for round-trip offers
+    # Return leg extraction (always present — round-trip only)
     return_leg: dict[str, Any] | None = None
-    if len(offer["itineraries"]) > 1 and return_date is not None:
+    if len(offer["itineraries"]) > 1:
         ret_itinerary: dict[str, Any] = offer["itineraries"][1]
         ret_segments: list[dict[str, Any]] = ret_itinerary["segments"]
 
@@ -362,8 +355,6 @@ def normalise_offer(
             "layover_airports": ret_layover_airports,
         }
 
-    trip_type: str = "round-trip" if return_date else "one-way"
-
     return {
         "provider": "amadeus",
         "airline": airline_name,
@@ -379,7 +370,8 @@ def normalise_offer(
         "cabin": cabin,
         "price": price,
         "currency": result_currency,
-        "trip_type": trip_type,
+        "trip_type": "round-trip",
+        "return_date": return_date,
         "return_leg": return_leg,
         "booking_url": None,
         "raw": offer,
@@ -425,9 +417,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--return-date",
-        default=None,
+        required=True,
         metavar="DATE",
-        help="Return date for round-trip search (YYYY-MM-DD). Omit for one-way.",
+        help="Return date in YYYY-MM-DD format (required — round-trip only).",
     )
     parser.add_argument(
         "--cabin",
@@ -530,8 +522,7 @@ async def main() -> None:
     args = parser.parse_args()
 
     validate_date(args.date, "-d / departure date")
-    if args.return_date is not None:
-        validate_date(args.return_date, "--return-date")
+    validate_date(args.return_date, "--return-date")
 
     if args.adults < 1:
         print("error: --adults must be at least 1.", file=sys.stderr)

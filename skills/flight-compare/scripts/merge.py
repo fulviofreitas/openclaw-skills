@@ -242,7 +242,7 @@ def format_table(
     cabin: str,
     adults: int,
     provider_counts: dict[str, int],
-    return_date: str | None = None,
+    return_date: str,
 ) -> str:
     """Render a human-readable summary table.
 
@@ -256,7 +256,7 @@ def format_table(
         provider_counts: Mapping of provider display-name → raw result count
                          before deduplication, e.g.
                          ``{"Google": 7, "ITA Matrix": 5}``.
-        return_date: Return date for round-trip searches, or ``None``.
+        return_date: Return date string (e.g. ``"2026-04-22"``).
 
     Returns:
         Multi-line string ready for printing to stdout.
@@ -266,9 +266,7 @@ def format_table(
     # Header
     cabin_display = cabin.replace("_", " ").title()
     adult_label = f"{adults} adult" + ("s" if adults != 1 else "")
-    route_str = f"{origin.upper()} \u2192 {dest.upper()}"
-    if return_date:
-        route_str += f" \u21a9 {return_date}"
+    route_str = f"{origin.upper()} \u2192 {dest.upper()} \u21a9 {return_date}"
     lines.append(
         f"Searching {route_str} on {date}"
         f" ({cabin_display}, {adult_label})..."

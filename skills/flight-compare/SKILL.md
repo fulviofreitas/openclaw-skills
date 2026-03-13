@@ -49,9 +49,9 @@ python3 {baseDir}/scripts/compare.py <FROM> <TO> [options]
 
 ### Default: human-readable table
 
-One-way search:
+Example:
 ```
-Searching SFO → JFK on 2026-04-15 (Economy, 1 adult)...
+Searching SFO → JFK ↩ 2026-04-22 on 2026-04-15 (Economy, 1 adult)...
 Providers: ✓ Google Flights  ✓ ITA Matrix  ✓ Amadeus (test)
 
  #  AIRLINE        FLIGHT    DEPART  ARRIVE  DURATION  STOPS  PRICE    SOURCE

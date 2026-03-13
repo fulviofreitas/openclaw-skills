@@ -76,10 +76,10 @@ export AMADEUS_BASE_URL=https://api.amadeus.com
 
 ## Usage Examples
 
-**Basic one-way search:**
+**Basic round-trip search:**
 
 ```bash
-python3 skills/google-flights/scripts/search.py JFK LAX -d 2026-05-01
+python3 skills/google-flights/scripts/search.py JFK LAX -d 2026-05-01 --return-date 2026-05-10
 ```
 
 **Round-trip business class:**

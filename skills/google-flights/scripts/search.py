@@ -2,7 +2,7 @@
 """Search Google Flights and emit newline-delimited JSON results.
 
 Usage:
-    python search.py <FROM> <TO> [-d DATE] [--return-date DATE]
+    python search.py <FROM> <TO> -d DATE --return-date DATE
                      [--cabin CABIN] [--stops STOPS]
                      [--adults N] [--currency CODE] [--max N]
 
@@ -76,8 +76,7 @@ def _build_flight_result(
     departure_date: date,
     cabin: CabinArg,
     currency: str,
-    is_round_trip: bool = False,
-    return_date: date | None = None,
+    return_date: date,
 ) -> dict[str, Any]:
     """Convert a raw ``Flight`` object into the canonical FlightResult dict.
 
@@ -88,11 +87,7 @@ def _build_flight_result(
         departure_date: Calendar date of the outbound leg.
         cabin: Cabin class constant string.
         currency: ISO 4217 currency code.
-        is_round_trip: ``True`` when a return date was requested.  The price
-            returned by Google Flights reflects the full round-trip total in
-            that case.
-        return_date: Calendar date of the return leg, or ``None`` for one-way
-            searches.  Stored as an ISO 8601 string in the output.
+        return_date: Calendar date of the return leg.
 
     Returns:
         A FlightResult-shaped dictionary ready for JSON serialisation.
@@ -140,10 +135,8 @@ def _build_flight_result(
         "currency": currency.upper(),
         # Deep-link booking URLs require a paid API key; not available here.
         "booking_url": None,
-        "trip_type": "round-trip" if is_round_trip else "one-way",
-        # fast-flights does not surface individual return-leg details; the
-        # price already reflects the round-trip total when return_date is set.
-        "return_leg": None,
+        "trip_type": "round-trip",
+        "return_date": return_date.isoformat(),
         "raw": raw,
     }
 
@@ -258,10 +251,9 @@ def _build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Examples:\n"
-            "  python search.py JFK LAX\n"
-            "  python search.py JFK LAX -d 2026-05-01 --cabin BUSINESS\n"
-            "  python search.py LHR CDG --stops nonstop --currency EUR\n"
-            "  python search.py JFK LHR -d 2026-07-01 --return-date 2026-07-14"
+            "  python search.py JFK LAX -d 2026-05-01 --return-date 2026-05-10\n"
+            "  python search.py JFK LAX -d 2026-05-01 --return-date 2026-05-10 --cabin BUSINESS\n"
+            "  python search.py LHR CDG -d 2026-06-01 --return-date 2026-06-08 --stops nonstop"
         ),
     )
     parser.add_argument(
@@ -285,8 +277,8 @@ def _build_parser() -> argparse.ArgumentParser:
         "--return-date",
         dest="return_date",
         metavar="DATE",
-        default=None,
-        help="Return date in YYYY-MM-DD format (omit for one-way)",
+        required=True,
+        help="Return date in YYYY-MM-DD format (required — round-trip only)",
     )
     parser.add_argument(
         "--cabin",
@@ -390,44 +382,34 @@ def main() -> None:
         else date.today() + timedelta(days=1)
     )
 
-    is_round_trip = args.return_date is not None
-    if is_round_trip:
-        return_date: Optional[date] = _validate_date(
-            args.return_date, "--return-date"
+    return_date: date = _validate_date(args.return_date, "--return-date")
+    if return_date <= departure_date:
+        print(
+            "ERROR: --return-date must be after the departure date.",
+            file=sys.stderr,
         )
-        if return_date <= departure_date:
-            print(
-                "ERROR: --return-date must be after the departure date.",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-    else:
-        return_date = None
+        sys.exit(1)
 
     _validate_adults(args.adults)
 
     seat: str = _CABIN_TO_SEAT[args.cabin]
     max_stops: Optional[int] = _STOPS_TO_MAX[args.stops]
 
-    # Build fast_flights request objects
+    # Build fast_flights request objects (always round-trip)
     flight_data_legs: list[FlightData] = [
         FlightData(
             date=departure_date.isoformat(),
             from_airport=args.origin.upper(),
             to_airport=args.destination.upper(),
-        )
+        ),
+        FlightData(
+            date=return_date.isoformat(),
+            from_airport=args.destination.upper(),
+            to_airport=args.origin.upper(),
+        ),
     ]
 
-    if is_round_trip and return_date is not None:
-        flight_data_legs.append(
-            FlightData(
-                date=return_date.isoformat(),
-                from_airport=args.destination.upper(),
-                to_airport=args.origin.upper(),
-            )
-        )
-
-    trip: str = "round-trip" if is_round_trip else "one-way"
+    trip: str = "round-trip"
     passengers = Passengers(adults=args.adults)
 
     tfs_filter = create_filter(
@@ -467,7 +449,6 @@ def main() -> None:
                 departure_date=departure_date,
                 cabin=args.cabin,  # type: ignore[arg-type]
                 currency=args.currency,
-                is_round_trip=is_round_trip,
                 return_date=return_date,
             )
         except Exception as exc:  # noqa: BLE001

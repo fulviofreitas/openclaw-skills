@@ -122,7 +122,7 @@ class SearchParams(TypedDict):
     origin: str
     destination: str
     departure_date: str
-    return_date: str | None
+    return_date: str
     cabin: str
     stops: str
     adults: int
@@ -173,8 +173,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--return-date",
         dest="return_date",
         metavar="DATE",
-        default=None,
-        help="Return date for round-trip searches (YYYY-MM-DD)",
+        required=True,
+        help="Return date in YYYY-MM-DD format (required — round-trip only)",
     )
     parser.add_argument(
         "--cabin",
@@ -249,9 +249,7 @@ def validate_args(args: argparse.Namespace) -> SearchParams:
         return value
 
     departure_date = _validate_date(args.departure_date, "-d")
-    return_date: str | None = None
-    if args.return_date is not None:
-        return_date = _validate_date(args.return_date, "--return-date")
+    return_date: str = _validate_date(args.return_date, "--return-date")
 
     if args.adults < 1:
         print("error: --adults must be >= 1", file=sys.stderr)
@@ -809,7 +807,7 @@ async def _extract_row(row: Any, params: SearchParams) -> FlightResult | None:
         price=price,
         currency=params["currency"],
         booking_url=None,
-        trip_type="round-trip" if params["return_date"] else "one-way",
+        trip_type="round-trip",
         return_leg=None,
         raw=raw,
     )
@@ -885,9 +883,7 @@ async def run_search(params: SearchParams) -> list[FlightResult]:
             # Fill in the search form fields.
             await _fill_origin_destination(page, params["origin"], params["destination"])
             await _fill_date(page, params["departure_date"], "Depart")
-
-            if params["return_date"]:
-                await _fill_date(page, params["return_date"], "Return")
+            await _fill_date(page, params["return_date"], "Return")
 
             await _select_cabin(page, params["cabin"])
             await _set_passengers(page, params["adults"])

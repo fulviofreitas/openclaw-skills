@@ -21,7 +21,7 @@ python3 {baseDir}/scripts/search.py <FROM> <TO> [options]
 | Flag                  | Default       | Description                                                    |
 |-----------------------|---------------|----------------------------------------------------------------|
 | `-d DATE`             | tomorrow      | Departure date as `YYYY-MM-DD`                                 |
-| `--return-date DATE`  | (omit)        | Return date as `YYYY-MM-DD`; omit for one-way trips            |
+| `--return-date DATE`  | (omit)        | Return date as `YYYY-MM-DD`;  trips            |
 | `--cabin CABIN`       | `ECONOMY`     | One of: `ECONOMY`, `PREMIUM_ECONOMY`, `BUSINESS`, `FIRST`      |
 | `--stops STOPS`       | `any`         | One of: `any`, `nonstop`, `one`, `two`                         |
 | `--adults N`          | `1`           | Number of adult passengers (1–9)                               |
@@ -45,7 +45,7 @@ python3 {baseDir}/scripts/search.py JFK LAX -d 2026-05-01 --max 2
 
 When `--return-date` is provided, the search is performed as a round-trip. Each result includes:
 
-- `trip_type`: `"round-trip"` or `"one-way"`
+- `trip_type`: `"round-trip"`
 - `return_leg`: always `null` — Google Flights via `fast-flights` does not provide separate return leg details, but the `price` reflects the full round-trip total.
 
 ## Important Limitations
